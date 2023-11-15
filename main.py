@@ -4,17 +4,18 @@ from sys import exit
 
 # Settings
 size = (400, 500)
-jump = -20
+jump = -25
 
 class Dog(pygame.sprite.Sprite):
     def __init__(self):
         super().__init__()
         dog_1 = pygame.image.load('graphics/dog_1.png').convert_alpha()
-        #dog_2 = pygame.image.load('graphics/dog_2.png').convert_alpha()
-        self.dogs = dog_1 # List of animations
+        dog_2 = pygame.image.load('graphics/dog_2.png').convert_alpha()
+        self.dogs = [dog_1, dog_2] # List of animations
+        self.dog_index = 0
 
-        self.image = self.dogs # Shift between different dogs
-        self.rect = self.image.get_rect(center=(100, 100))
+        self.image = self.dogs[self.dog_index] # Shift between different dogs
+        self.rect = self.image.get_rect(bottomleft=(100, 100)) ### THINK ABOUT THE DIFFERENT SIZES!!!
         self.gravity = 0
     
     # def player_input(self):
@@ -31,10 +32,18 @@ class Dog(pygame.sprite.Sprite):
         if self.rect.bottom > size[1]:
             self.rect.bottom = size[1] # Change later
     
+    def animation_state(self):
+        if self.gravity < 0:
+            self.dog_index = 1
+        else:
+            self.dog_index = 0
+        self.image = self.dogs[self.dog_index]
+        self.rect = self.image.get_rect(center=(self.rect.center))
+
     def update(self):
         #self.player_input()
         self.apply_gravity()
-        # self.animation_state() # Make later
+        self.animation_state()
 
 pygame.init()
 screen = pygame.display.set_mode(size=size)
