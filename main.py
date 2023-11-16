@@ -4,7 +4,10 @@ from sys import exit
 
 # Settings
 size = (400, 500)
-jump = -25
+jump = -8
+gravity = 0.38
+floor_height = 419
+speed = 3
 
 class Dog(pygame.sprite.Sprite):
     def __init__(self):
@@ -17,20 +20,15 @@ class Dog(pygame.sprite.Sprite):
         self.image = self.dogs[self.dog_index] # Shift between different dogs
         self.rect = self.image.get_rect(bottomleft=(100, 100)) ### THINK ABOUT THE DIFFERENT SIZES!!!
         self.gravity = 0
-    
-    # def player_input(self):
-    #     keys = pygame.key.get_pressed()
-    #     if keys[pygame.K_SPACE]:
-    #         self.gravity = jump
 
     def space_bar(self):
         self.gravity = jump
 
     def apply_gravity(self):
-        self.gravity += 1
+        self.gravity += gravity
         self.rect.y += self.gravity
-        if self.rect.bottom > size[1]:
-            self.rect.bottom = size[1] # Change later
+        if self.rect.bottom > floor_height:
+            self.rect.bottom = floor_height # Change later
     
     def animation_state(self):
         if self.gravity < 0:
@@ -56,9 +54,10 @@ dog = pygame.sprite.GroupSingle()
 dog.add(Dog())
 dog_sprite = dog.sprite # To call Class functions
 
-# Test background
-test_surface = pygame.Surface(size=size)
-test_surface.fill('Red')
+# background
+background_surface = pygame.image.load('graphics/background_spyd.png').convert()
+background_x = 0
+background_x_max = 1000
 
 while True:
     for event in pygame.event.get():
@@ -71,11 +70,16 @@ while True:
                 if event.key == pygame.K_SPACE:
                     dog_sprite.space_bar()
 
+    if game_active:
 
-    screen.blit(source=test_surface, dest=(0, 0))
+        # Background
+        screen.blit(source=background_surface, dest=(background_x, 0))
+        background_x -= speed
+        if background_x < -background_x_max:
+            background_x = 0
 
-    dog.draw(screen)
-    dog.update()
+        dog.draw(screen)
+        dog.update()
 
     pygame.display.update()
     clock.tick(60)
