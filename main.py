@@ -1,9 +1,10 @@
 import pygame
 from sys import exit
-# Test 
+
+# Spyd 32 px bred, 91 px høj
 
 # Settings
-size = (400, 500)
+window_size = (400, 500)
 jump = -8
 gravity = 0.38
 floor_height = 419
@@ -43,21 +44,48 @@ class Dog(pygame.sprite.Sprite):
         self.apply_gravity()
         self.animation_state()
 
+class Obstacle(pygame.sprite.Sprite):
+    def __init__(self, type):
+        super().__init__()
+
+        if type == 'top':
+            pole = pygame.Surface(size=(32, 100))
+            y_pos = 0
+        elif type == 'bot':
+            pole = pygame.Surface(size=(32, 100))
+            y_pos = 200
+
+        self.image = pole
+        self.rect = self.image.get_rect(topleft=(window_size[1], y_pos))
+
+    def update(self):
+        self.rect.x -= speed
+        self.destroy()
+
+    def destroy(self):
+        if self.rect.x <= -100:
+            self.kill()
+
 pygame.init()
-screen = pygame.display.set_mode(size=size)
+screen = pygame.display.set_mode(size=window_size)
 pygame.display.set_caption('Flappy Dog')
 clock = pygame.time.Clock()
 game_active = True
 
-# Objects
+# Plater
 dog = pygame.sprite.GroupSingle()
 dog.add(Dog())
 dog_sprite = dog.sprite # To call Class functions
+# Obstacles
+obstacle_group = pygame.sprite.Group()
 
-# background
-background_surface = pygame.image.load('graphics/background_spyd.png').convert()
+# Background
+background_surface = pygame.image.load('graphics/background.png').convert()
 background_x = 0
 background_x_max = 1000
+
+# Distance count
+dist = 0
 
 while True:
     for event in pygame.event.get():
@@ -78,8 +106,20 @@ while True:
         if background_x < -background_x_max:
             background_x = 0
 
+        # Player
         dog.draw(screen)
         dog.update()
+
+        # Obstacles
+        obstacle_group.draw(screen)
+        obstacle_group.update()
+
+        dist += speed
+
+        if dist > 175:
+            dist -= 175
+            obstacle_group.add(Obstacle('top'))
+            obstacle_group.add(Obstacle('bot'))
 
     pygame.display.update()
     clock.tick(60)
