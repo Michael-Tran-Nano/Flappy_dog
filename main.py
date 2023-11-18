@@ -2,15 +2,19 @@ import pygame
 from sys import exit
 from random import randint
 
+# Exploit to fix: When you fly too high, you can avoid everything
+
 # Settings
 window_size = (400, 500)
+
 jump = -8
 gravity = 0.38
-floor_height = 419
-initial_speed = 3
-speed = initial_speed
+speed = 3
+start_position = (100, 100)
+
 block_dist = 225
 block_gap = 110
+floor_height = 419
 
 class Dog(pygame.sprite.Sprite):
     def __init__(self):
@@ -21,7 +25,7 @@ class Dog(pygame.sprite.Sprite):
         self.dog_index = 0
 
         self.image = self.dogs[self.dog_index] # Shift between different dogs
-        self.rect = self.image.get_rect(bottomleft=(100, 100)) ### THINK ABOUT THE DIFFERENT SIZES!!!
+        self.rect = self.image.get_rect(bottomleft=start_position) ### THINK ABOUT THE DIFFERENT SIZES!!!
         self.mask = pygame.mask.from_surface(self.image)
         self.gravity = 0
 
@@ -59,13 +63,13 @@ class Dog(pygame.sprite.Sprite):
             if self.rotation_count > 1:
                 self.rotation_count = 0
                 self.image = pygame.transform.rotate(self.image, 90)
-            self.rect.x += initial_speed
+            self.rect.x += speed
 
     def update(self):
         self.apply_gravity()
         if alive:
             self.animation_state()
-        else:
+        elif game_active:
             self.rotate()
 
 class Obstacle(pygame.sprite.Sprite):
@@ -150,8 +154,8 @@ background_x_max = 1000
 dist_traversed = 0
 
 # Status
-game_active = True
-alive = True
+game_active = False
+alive = False
 
 while True:
     for event in pygame.event.get():
@@ -159,37 +163,53 @@ while True:
             pygame.quit()
             exit()
 
-        if game_active and alive:
-            if event.type == pygame.KEYUP:
-                if event.key == pygame.K_SPACE:
+        # When you are done pressing space bar
+        if event.type == pygame.KEYUP:
+            if event.key == pygame.K_SPACE:
+
+                # Playing, press to jump
+                if game_active and alive:
                     dog_sprite.space_bar()
 
-    if game_active:
+                # Press space bar to restart to start screen
+                elif game_active and not alive and dog_sprite.rect.bottom >= floor_height:
+                    game_active = False
 
-        # Background
-        screen.blit(source=background_surface, dest=(background_x, 0))
+                    # Reset dog and obtacles
+                    dog_sprite.rect.x, dog_sprite.rect.y = start_position 
+                    dog_sprite.image = dog_sprite.dogs[0] # initial sprite
+                    obstacle_group.empty()
+                    obstacle_attachment_group.empty()
+                
+                # Press space bar to start the game
+                elif not game_active and not alive:
+                    game_active = True
+                    alive = True
+                    dog.sprite.space_bar()
+
+    # Background
+    screen.blit(source=background_surface, dest=(background_x, 0))
+    if alive or not game_active: # You move when the game is active or when you are at the start screen
         background_x -= speed
         if background_x < -background_x_max:
             background_x = 0
 
-        # Player
-        dog.draw(screen)
-        dog.update()
+    # Player
+    dog.draw(screen)
+    dog.update()
+
+    if game_active:
 
         # Obstacles
         obstacle_group.draw(screen)
-        obstacle_group.update()
         obstacle_attachment_group.draw(screen)
-        obstacle_attachment_group.update()
 
         # game_active = collisions_obstacle_test()
         if alive:
             alive = collisions_obstacle_test()
-        if not alive:
-            speed = 0
-
-
-        dist_traversed += speed
+            dist_traversed += speed
+            obstacle_group.update()
+            obstacle_attachment_group.update()
 
         if dist_traversed > block_dist:
             dist_traversed -= block_dist
@@ -198,6 +218,9 @@ while True:
             obstacle_group.add(Obstacle('bot', height))
             obstacle_attachment_group.add(Obstacle_attachment('top'))
             obstacle_attachment_group.add(Obstacle_attachment('bot'))
+
+    else:
+        dog_sprite.rect.y = start_position[1] # You stay at a fixed position at the start screen
 
     pygame.display.update()
     clock.tick(60)
