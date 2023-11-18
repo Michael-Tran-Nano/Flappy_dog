@@ -2,8 +2,6 @@ import pygame
 from sys import exit
 from random import randint
 
-# Exploit to fix: When you fly too high, you can avoid everything
-
 # Settings
 window_size = (400, 500)
 
@@ -38,8 +36,13 @@ class Dog(pygame.sprite.Sprite):
     def apply_gravity(self):
         self.gravity += gravity
         self.rect.y += self.gravity
+
+        # Floor and ceiling
         if self.rect.bottom > floor_height:
-            self.rect.bottom = floor_height # Change later
+            self.rect.bottom = floor_height
+        if self.rect.top < 0:
+            self.rect.top = 0
+            self.gravity = 0
     
     def animation_state(self):
         if self.gravity < 0:
@@ -172,7 +175,8 @@ while True:
                     dog_sprite.space_bar()
 
                 # Press space bar to restart to start screen
-                elif game_active and not alive and dog_sprite.rect.bottom >= floor_height:
+                elif (game_active and not alive
+                      and dog_sprite.rect.bottom >= floor_height): 
                     game_active = False
 
                     # Reset dog and obtacles
@@ -198,7 +202,7 @@ while True:
     dog.draw(screen)
     dog.update()
 
-    if game_active:
+    if game_active: # When you are not at the start screen
 
         # Obstacles
         obstacle_group.draw(screen)
