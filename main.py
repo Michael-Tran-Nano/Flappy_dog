@@ -2,8 +2,6 @@ import pygame
 from sys import exit
 from random import randint
 
-# to add, sound
-
 # Settings
 window_size = (400, 500)
 
@@ -13,7 +11,7 @@ speed = 3
 start_position = (100, 100)
 
 block_dist = 225
-block_gap = 110
+block_gap = 120
 floor_height = 419
 
 class Dog(pygame.sprite.Sprite):
@@ -25,7 +23,7 @@ class Dog(pygame.sprite.Sprite):
         self.dog_index = 0
 
         self.image = self.dogs[self.dog_index] # Shift between different dogs
-        self.rect = self.image.get_rect(bottomleft=start_position) ### THINK ABOUT THE DIFFERENT SIZES!!!
+        self.rect = self.image.get_rect(bottomleft=start_position)
         self.mask = pygame.mask.from_surface(self.image)
         self.gravity = 0
 
@@ -34,6 +32,7 @@ class Dog(pygame.sprite.Sprite):
 
     def space_bar(self):
         self.gravity = jump
+        jump_sound.play()
 
     def apply_gravity(self):
         self.gravity += gravity
@@ -119,33 +118,54 @@ class Obstacle_attachment(pygame.sprite.Sprite):
         if self.rect.x <= -100:
             self.kill()
 
+class Bone(pygame.sprite.Sprite):
+    def __init__(self, height):
+        super().__init__()
+
+        self.image = pygame.image.load('graphics/bone.png').convert_alpha()
+        self.image_height = self.image.get_height()
+
+        # Position in the gap
+        y_pos = randint(height - 0.5*block_gap, height + 0.5*block_gap - self.image_height)
+        self.rect = self.image.get_rect(midtop=(window_size[0]*1.1, y_pos))
+
+    def update(self):
+        self.rect.x -= speed
+        self.destroy()
+
+    def destroy(self):
+        if self.rect.x <= -100:
+            self.kill()
+
 def collisions_obstacle_test():
     if pygame.sprite.spritecollide(sprite=dog.sprite, 
                                    group=obstacle_group, 
                                    dokill=False):
-        print('Rect collision')
         # Only check for mask collision when there is rect collision
         if pygame.sprite.spritecollide(sprite=dog.sprite, 
                                    group=obstacle_group, 
                                    dokill=False,
                                    collided=pygame.sprite.collide_mask):
-            print('Real collision')
             dog_sprite.death() # Make the dog jump before spinning
-            # obstacle_group.empty()
-            # obstacle_attachment_group.empty()
+            crash_sound.play()
         return False
     else:
         return True
 
-def start_text():
-    screen.blit(source=start_text_surf, dest=start_text_rect)
-    screen.blit(source=space_text_surf, dest=space_text_rect)
+def collisions_bone_test():
+    if pygame.sprite.spritecollide(sprite=dog.sprite, 
+                                   group=bone_group, 
+                                   dokill=True):
+        ding_sound.play()
+        # +1 in score
+        return 1
+    return 0
 
+# Text functions
 def display_score(score):
     score_surf = pixel_font_small.render(f"SCORE: {score}", False, (20, 20, 20))
     score_rect = score_surf.get_rect(center=(window_size[0]/2, window_size[1]/12))
     screen.blit(score_surf, score_rect)
-
 def final_score(score):
     score_surf = pixel_font_small.render(f"FINAL SCORE: {score}", False, (20, 20, 20))
     score_rect = score_surf.get_rect(center=(window_size[0]/2, window_size[1]/3))
@@ -155,6 +175,14 @@ pygame.init()
 screen = pygame.display.set_mode(size=window_size)
 pygame.display.set_caption('Flappy Dog')
 clock = pygame.time.Clock()
+
+# Sounds
+jump_sound = pygame.mixer.Sound('audio/flap.mp3')
+#jump_sound.set_volume(0.1)
+crash_sound = pygame.mixer.Sound('audio/collision.mp3')
+crash_sound.set_volume(0.3)
+ding_sound = pygame.mixer.Sound('audio/ding.mp3')
+ding_sound.set_volume(0.2)
 
 # Font
 pixel_font_small = pygame.font.Font('fonts/Pixeled.ttf', size=16)
@@ -167,7 +195,7 @@ space_text_rect = space_text_surf.get_rect(center=(window_size[0]/2, window_size
 # Text, respawn
 respawn_surf = pixel_font_small.render(f"PRESS SPACEBAR TO RESTART", False, (20, 20, 20))
 respawn_rect = respawn_surf.get_rect(center=(window_size[0]/2, window_size[1]/3 + 40))
-respawn_background_surf = pygame.Surface((window_size[0], 80), pygame.SRCALPHA)
+respawn_background_surf = pygame.Surface((window_size[0], 80), pygame.SRCALPHA) # Also box for final score
 respawn_background_surf.fill(color=(255, 255, 255, 100))
 respawn_background_rect = respawn_background_surf.get_rect(midtop=(window_size[0]/2, window_size[1]/3 - 16))
 
@@ -178,6 +206,8 @@ dog_sprite = dog.sprite # To call Class functions
 # Obstacles
 obstacle_group = pygame.sprite.Group()
 obstacle_attachment_group = pygame.sprite.Group()
+# Bones
+bone_group = pygame.sprite.Group()
 
 # Background
 background_surface = pygame.image.load('graphics/background.png').convert()
@@ -208,7 +238,7 @@ while True:
 
                 # Press space bar to restart to start screen
                 elif (game_active and not alive
-                      and dog_sprite.rect.bottom >= floor_height): 
+                      and dog_sprite.rect.bottom >= floor_height): # You need to touch grass before you can restart
                     game_active = False
 
                     # Reset dog and obtacles
@@ -216,6 +246,7 @@ while True:
                     dog_sprite.image = dog_sprite.dogs[0] # initial sprite
                     obstacle_group.empty()
                     obstacle_attachment_group.empty()
+                    bone_group.empty()
                     score = 0
                 
                 # Press space bar to start the game
@@ -226,6 +257,7 @@ while True:
 
     # Background
     screen.blit(source=background_surface, dest=(background_x, 0))
+
     if alive or not game_active: # You move when the game is active or when you are at the start screen
         background_x -= speed
         if background_x < -background_x_max:
@@ -240,14 +272,19 @@ while True:
         # Obstacles
         obstacle_group.draw(screen)
         obstacle_attachment_group.draw(screen)
+        # Bones
+        bone_group.draw(screen)
 
         # game_active = collisions_obstacle_test()
         if alive:
             alive = collisions_obstacle_test()
+            score += collisions_bone_test()
             dist_traversed += speed
             obstacle_group.update()
             obstacle_attachment_group.update()
+            bone_group.update()
 
+            # Spawn obstacles and bones
             if dist_traversed > block_dist:
                 dist_traversed -= block_dist
                 height = randint(100, 340)
@@ -255,6 +292,7 @@ while True:
                 obstacle_group.add(Obstacle('bot', height))
                 obstacle_attachment_group.add(Obstacle_attachment('top'))
                 obstacle_attachment_group.add(Obstacle_attachment('bot'))
+                bone_group.add(Bone(height))
 
         else:
             screen.blit(respawn_background_surf, respawn_background_rect)
@@ -265,7 +303,8 @@ while True:
 
     else:
         dog_sprite.rect.y = start_position[1] # You stay at a fixed position at the start screen
-        start_text()
+        screen.blit(source=start_text_surf, dest=start_text_rect)
+        screen.blit(source=space_text_surf, dest=space_text_rect)
 
     pygame.display.update()
     clock.tick(60)
