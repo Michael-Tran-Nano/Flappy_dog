@@ -2,6 +2,8 @@ import pygame
 from sys import exit
 from random import randint
 
+# to add, sound
+
 # Settings
 window_size = (400, 500)
 
@@ -135,10 +137,39 @@ def collisions_obstacle_test():
     else:
         return True
 
+def start_text():
+    screen.blit(source=start_text_surf, dest=start_text_rect)
+    screen.blit(source=space_text_surf, dest=space_text_rect)
+
+def display_score(score):
+    score_surf = pixel_font_small.render(f"SCORE: {score}", False, (20, 20, 20))
+    score_rect = score_surf.get_rect(center=(window_size[0]/2, window_size[1]/12))
+    screen.blit(score_surf, score_rect)
+
+def final_score(score):
+    score_surf = pixel_font_small.render(f"FINAL SCORE: {score}", False, (20, 20, 20))
+    score_rect = score_surf.get_rect(center=(window_size[0]/2, window_size[1]/3))
+    screen.blit(score_surf, score_rect)
+
 pygame.init()
 screen = pygame.display.set_mode(size=window_size)
 pygame.display.set_caption('Flappy Dog')
 clock = pygame.time.Clock()
+
+# Font
+pixel_font_small = pygame.font.Font('fonts/Pixeled.ttf', size=16)
+pixel_font_big = pygame.font.Font('fonts/Pixeled.ttf', size=36)
+# Text, start
+start_text_surf = pixel_font_big.render('FLAPPY DOG', False, (0, 0, 0))
+start_text_rect = start_text_surf.get_rect(center=(window_size[0]/2, window_size[1]/3))
+space_text_surf = pixel_font_small.render('PRESS SPACE TO START', False, (20, 20, 20))
+space_text_rect = space_text_surf.get_rect(center=(window_size[0]/2, window_size[1]/3 + 70))
+# Text, respawn
+respawn_surf = pixel_font_small.render(f"PRESS SPACEBAR TO RESTART", False, (20, 20, 20))
+respawn_rect = respawn_surf.get_rect(center=(window_size[0]/2, window_size[1]/3 + 40))
+respawn_background_surf = pygame.Surface((window_size[0], 80), pygame.SRCALPHA)
+respawn_background_surf.fill(color=(255, 255, 255, 100))
+respawn_background_rect = respawn_background_surf.get_rect(midtop=(window_size[0]/2, window_size[1]/3 - 16))
 
 # Player
 dog = pygame.sprite.GroupSingle()
@@ -159,6 +190,7 @@ dist_traversed = 0
 # Status
 game_active = False
 alive = False
+score = 0
 
 while True:
     for event in pygame.event.get():
@@ -184,6 +216,7 @@ while True:
                     dog_sprite.image = dog_sprite.dogs[0] # initial sprite
                     obstacle_group.empty()
                     obstacle_attachment_group.empty()
+                    score = 0
                 
                 # Press space bar to start the game
                 elif not game_active and not alive:
@@ -215,16 +248,24 @@ while True:
             obstacle_group.update()
             obstacle_attachment_group.update()
 
-        if dist_traversed > block_dist:
-            dist_traversed -= block_dist
-            height = randint(100, 340)
-            obstacle_group.add(Obstacle('top', height))
-            obstacle_group.add(Obstacle('bot', height))
-            obstacle_attachment_group.add(Obstacle_attachment('top'))
-            obstacle_attachment_group.add(Obstacle_attachment('bot'))
+            if dist_traversed > block_dist:
+                dist_traversed -= block_dist
+                height = randint(100, 340)
+                obstacle_group.add(Obstacle('top', height))
+                obstacle_group.add(Obstacle('bot', height))
+                obstacle_attachment_group.add(Obstacle_attachment('top'))
+                obstacle_attachment_group.add(Obstacle_attachment('bot'))
+
+        else:
+            screen.blit(respawn_background_surf, respawn_background_rect)
+            screen.blit(respawn_surf, respawn_rect)
+            final_score(score)
+
+        display_score(score)  
 
     else:
         dog_sprite.rect.y = start_position[1] # You stay at a fixed position at the start screen
+        start_text()
 
     pygame.display.update()
     clock.tick(60)
